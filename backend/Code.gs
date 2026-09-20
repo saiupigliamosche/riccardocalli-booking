@@ -80,6 +80,15 @@ function createBooking_(p) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(trialDate)) return { ok: false, error: 'Data non valida.' };
   if (!/^\S+@\S+\.\S+$/.test(email)) return { ok: false, error: 'Email non valida.' };
   if (!isBookableDay_(trialDate)) return { ok: false, error: 'Questa data non è prenotabile.' };
+  if (!isBeforeSameDayCutoff_(trialDate)) return { ok: false, error: 'Le prenotazioni per oggi sono chiuse alle 12:00.' };
+
+  const duplicate = sheet_().getDataRange().getValues().slice(1).some(row =>
+    normalizeDate_(row[1]) === trialDate &&
+    String(row[2]).trim().toLowerCase() === name.toLowerCase() &&
+    String(row[5]).trim().toLowerCase() === email &&
+    !['annullata', 'cancellata'].includes(String(row[6] || '').trim().toLowerCase())
+  );
+  if (duplicate) return { ok: false, error: 'Esiste già una prenotazione per questa persona e questa data.' };
 
   const availability = getAvailability_().find(x => x.date === trialDate);
   if (!availability || availability.full) return { ok: false, error: 'La lezione è completa o non più disponibile.' };
@@ -162,6 +171,14 @@ function normalizeDate_(v) { return v instanceof Date && !isNaN(v) ? Utilities.f
 function parseDate_(s) { const p = s.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); }
 function formatDate_(s) { return Utilities.formatDate(parseDate_(s), CONFIG.timezone, 'EEEE d MMMM yyyy'); }
 function isBookableDay_(s) { const d = parseDate_(s); const day = d.getDay(); return day === 2 || day === 4; }
+function isBeforeSameDayCutoff_(s) {
+  const now = new Date();
+  const today = Utilities.formatDate(now, CONFIG.timezone, 'yyyy-MM-dd');
+  if (s !== today) return true;
+  const cutoff = new Date(now);
+  cutoff.setHours(12, 0, 0, 0);
+  return now < cutoff;
+}
 function clean_(v) { return String(v == null ? '' : v).trim().slice(0, 300); }
 function attributionNote_(a) { return Object.keys(a).filter(k => k.indexOf('utm_') === 0 || /fbclid|gclid|campaign|creative|term|source|medium/.test(k)).map(k => k + '=' + clean_(a[k])).join(' | '); }
 function json_(obj) { return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON); }
