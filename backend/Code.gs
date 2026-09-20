@@ -95,26 +95,49 @@ function createBooking_(p) {
 
   const attribution = p.attribution || {};
   const now = new Date();
+  const bookingId = bookingId_();
+  const utmSource = clean_(attribution.utm_source || attribution.source || '');
+  const utmMedium = clean_(attribution.utm_medium || attribution.medium || '');
+  const utmCampaign = clean_(attribution.utm_campaign || attribution.campaign || '');
+  const utmContent = clean_(attribution.utm_content || attribution.creative || '');
+  const utmTerm = clean_(attribution.utm_term || attribution.term || '');
+  const fbclid = clean_(attribution.fbclid || '');
+  const metaCampaignId = clean_(attribution.meta_campaign_id || attribution.campaign_id || attribution['campaign.id'] || '');
+  const metaAdSetId = clean_(attribution.meta_adset_id || attribution.adset_id || attribution['adset.id'] || '');
+  const metaAdId = clean_(attribution.meta_ad_id || attribution.ad_id || attribution['ad.id'] || '');
+
   sheet_().appendRow([
-    now,
-    parseDate_(trialDate),
-    name,
-    age,
-    phone,
-    email,
-    'Prenotata',
-    '',
-    '',
-    '',
-    '',
-    clean_(attribution.utm_campaign || attribution.campaign || ''),
-    clean_(attribution.utm_content || attribution.creative || ''),
-    attributionNote_(attribution)
+    now,                              // A Data prenotazione
+    parseDate_(trialDate),            // B Data prova
+    name,                             // C Nome e cognome
+    age,                              // D Età
+    phone,                            // E Telefono
+    email,                            // F Email
+    'Prenotata',                      // G Stato
+    '',                               // H Presente
+    '',                               // I Pagato
+    '',                               // J Data pagamento
+    '',                               // K Importo
+    utmCampaign,                      // L Campagna (legacy)
+    utmContent,                       // M Creatività (legacy)
+    attributionNote_(attribution),    // N Note
+    bookingId,                        // O Booking ID
+    '',                               // P Persona ID
+    utmSource,                        // Q UTM source
+    utmMedium,                        // R UTM medium
+    utmCampaign,                      // S UTM campaign
+    utmContent,                       // T UTM content
+    utmTerm,                          // U UTM term
+    fbclid,                           // V fbclid
+    metaCampaignId,                   // W Meta campaign ID
+    metaAdSetId,                      // X Meta ad set ID
+    metaAdId,                         // Y Meta ad ID
+    ''                                // Z Data conversione
   ]);
 
   sendEmails_(name, age, phone, email, trialDate);
   updateCalendar_(trialDate);
-  return { ok: true, message: 'Prenotazione registrata. Controlla la tua email.' };
+  return { ok: true, bookingId: bookingId, message: 'Prenotazione registrata. Controlla la tua email.' };
 }
 
 function sendEmails_(name, age, phone, email, trialDate) {
@@ -129,8 +152,37 @@ function sendEmails_(name, age, phone, email, trialDate) {
   MailApp.sendEmail(CONFIG.ownerEmail, adminSubject, adminBody);
 
   const subject = 'Conferma prova Parkour – ' + dateLabel;
-  const body = 'Ciao!\n\nGrazie per avermi contattato e per l’interesse verso il corso di Parkour!\n\nLa tua richiesta per partecipare a una prova è stata registrata. Ti aspetto il ' + dateLabel + ' dalle 19:00 alle 20:30.\n\nIl corso è rivolto a persone maggiorenni e non serve avere già esperienza. Gli allenamenti vengono adattati al livello di ciascuno.\n\nIl corso si svolge il martedì e il giovedì dalle 19:00 alle 20:30, con allenamenti itineranti a Padova in zone vicine al centro.\n\nPer la tua prova non devi fare altro: ti aspetto alle 19:00.\n\n' + spotText + '\n\nSe dovessi avere un imprevisto, avvisami rispondendo a questa email.\n\nA presto!\n\nSaiu';
-  MailApp.sendEmail({ to: email, subject: subject, body: body, name: 'Riccardo Calli' });
+
+  const body =
+    'Ciao!\n\n' +
+    'Grazie per avermi contattato e per l’interesse verso il corso di Parkour!\n\n' +
+    'La tua richiesta per partecipare a una prova è stata registrata. Ti aspetto ' + dateLabel + ' dalle 19:00 alle 20:30.\n\n' +
+    'Il corso è rivolto a persone maggiorenni e non serve avere già esperienza. Gli allenamenti vengono adattati al livello di ciascuno.\n\n' +
+    'Il corso si svolge il martedì e il giovedì dalle 19:00 alle 20:30, con allenamenti itineranti a Padova in zone vicine al centro.\n\n' +
+    'Per la tua prova non devi fare altro: ti aspetto alle 19:00.\n\n' +
+    spotText + '\n\n' +
+    'Se dovessi avere un imprevisto, avvisami rispondendo a questa email.\n\n' +
+    'A presto!\n\nSaiu';
+
+  const htmlSpot = escHtml_(spotText).replace(/\n/g, '<br>');
+  const htmlBody =
+    '<p>Ciao!</p>' +
+    '<p>Grazie per avermi contattato e per l’interesse verso il corso di Parkour!</p>' +
+    '<p>La tua richiesta per partecipare a una prova è stata registrata. Ti aspetto <strong>' + escHtml_(dateLabel) + '</strong> dalle 19:00 alle 20:30.</p>' +
+    '<p>Il corso è rivolto a persone maggiorenni e non serve avere già esperienza. Gli allenamenti vengono adattati al livello di ciascuno.</p>' +
+    '<p>Il corso si svolge il martedì e il giovedì dalle 19:00 alle 20:30, con allenamenti itineranti a Padova in zone vicine al centro.</p>' +
+    '<p>Per la tua prova non devi fare altro: ti aspetto alle 19:00.</p>' +
+    '<p>' + htmlSpot + '</p>' +
+    '<p>Se dovessi avere un imprevisto, avvisami rispondendo a questa email.</p>' +
+    '<p>A presto!</p><p>Saiu</p>';
+
+  MailApp.sendEmail({
+    to: email,
+    subject: subject,
+    body: body,
+    htmlBody: htmlBody,
+    name: 'Riccardo Calli'
+  });
 }
 
 function updateCalendar_(trialDate) {
@@ -186,4 +238,6 @@ function isBeforeSameDayCutoff_(s) {
 }
 function clean_(v) { return String(v == null ? '' : v).trim().slice(0, 300); }
 function attributionNote_(a) { return Object.keys(a).filter(k => k.indexOf('utm_') === 0 || /fbclid|gclid|campaign|creative|term|source|medium/.test(k)).map(k => k + '=' + clean_(a[k])).join(' | '); }
+function bookingId_() { return 'BKG-' + Date.now().toString(36).toUpperCase() + '-' + Utilities.getUuid().slice(0, 8).toUpperCase(); }
+function escHtml_(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])); }
 function json_(obj) { return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON); }
