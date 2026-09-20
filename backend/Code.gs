@@ -169,7 +169,12 @@ function getSpot_() {
 }
 function normalizeDate_(v) { return v instanceof Date && !isNaN(v) ? Utilities.formatDate(v, CONFIG.timezone, 'yyyy-MM-dd') : ''; }
 function parseDate_(s) { const p = s.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); }
-function formatDate_(s) { return Utilities.formatDate(parseDate_(s), CONFIG.timezone, 'EEEE d MMMM yyyy'); }
+function formatDate_(s) {
+  const d = parseDate_(s);
+  const days = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato'];
+  const months = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
+  return days[d.getDay()] + ' ' + d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+}
 function isBookableDay_(s) { const d = parseDate_(s); const day = d.getDay(); return day === 2 || day === 4; }
 function isBeforeSameDayCutoff_(s) {
   const now = new Date();
