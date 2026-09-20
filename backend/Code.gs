@@ -59,7 +59,7 @@ function getAvailability_() {
     const remaining = Math.max(0, max - used);
     dates.push({
       date: key,
-      label: Utilities.formatDate(d, CONFIG.timezone, 'EEEE d MMMM'),
+      label: formatDate_(key),
       remaining: remaining,
       full: remaining === 0,
       status: remaining === 0 ? 'red' : remaining <= 3 ? 'orange' : 'green'
