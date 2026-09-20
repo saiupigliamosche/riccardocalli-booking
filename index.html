@@ -25,24 +25,154 @@
 <label>Età<input required name="age" type="number" min="18" max="120"></label>
 <label>Email<input required name="email" type="email" autocomplete="email"></label>
 <label>Telefono<input required name="phone" type="tel" autocomplete="tel"></label>
-<p class="privacy-note">I dati servono esclusivamente per gestire la prova. Consulta l’<a href="/privacy.html">informativa privacy</a>.</p>
+<p class="privacy-note">I dati servono esclusivamente per gestire la prova. Consulta l'<a href="/privacy.html">informativa privacy e cookie</a>.</p>
 <button type="submit">Prenota la prova gratuita</button>
 <p id="status" role="status"></p>
 </form>
 </section>
 <section class="details"><h2>Come funziona</h2><p>Gli allenamenti sono itineranti in zone vicine al centro di Padova. Il punto di ritrovo preciso ti verrà comunicato prima della prova.</p></section>
-<footer><a href="/privacy.html">Privacy</a><span> · </span><a href="https://www.riccardocalli.com">riccardocalli.com</a></footer>
+<footer><a href="/privacy.html">Privacy</a><span> · </span><button class="cookie-preferences" id="cookie-preferences" type="button">Preferenze cookie</button><span> · </span><a href="https://www.riccardocalli.com">riccardocalli.com</a></footer>
 </main>
+
+<div id="cookie-banner" class="cookie-banner" role="dialog" aria-live="polite" aria-label="Preferenze cookie" hidden>
+<p><strong>Cookie e misurazione pubblicitaria</strong></p>
+<p>Con il tuo consenso possiamo usare Meta Pixel per misurare visite e prenotazioni provenienti dalle campagne. Puoi rifiutare senza limitazioni: la prenotazione continuerà a funzionare normalmente. <a href="/privacy.html">Dettagli</a>.</p>
+<div class="cookie-actions">
+<button type="button" class="cookie-reject" id="cookie-reject">Rifiuta</button>
+<button type="button" class="cookie-accept" id="cookie-accept">Accetta</button>
+</div>
+</div>
+
 <script>
 const endpoint = "https://script.google.com/macros/s/AKfycbzsxIoW5jXH2WstyQvjp2m_uQAhmWTt1mG-a9V48pJz5Jp2EjKi7W8X9Xgl6FVb0BLSpw/exec";
+const META_PIXEL_ID = "1096935832794111";
+const CONSENT_KEY = "riccardocalli_meta_marketing_consent_v1";
+
 const calendar = document.querySelector("#calendar");
 const form = document.querySelector("#booking-form");
 const status = document.querySelector("#status");
+const submitButton = form.querySelector('button[type="submit"]');
+const cookieBanner = document.querySelector("#cookie-banner");
+const cookieAccept = document.querySelector("#cookie-accept");
+const cookieReject = document.querySelector("#cookie-reject");
+const cookiePreferences = document.querySelector("#cookie-preferences");
 let selectedDate = "";
-function renderDates(items){calendar.innerHTML=""; if(!items.length){calendar.innerHTML="<p>Nessuna disponibilità nei prossimi giorni.</p>";return} items.forEach(item=>{const b=document.createElement("button");b.type="button";b.className="slot "+item.status;b.disabled=item.full;b.innerHTML="<strong>"+item.label+"</strong><span>"+item.remaining+" posti disponibili</span>";b.onclick=()=>{selectedDate=item.date;document.querySelector("#date").value=item.date;form.hidden=false;form.scrollIntoView({behavior:"smooth",block:"start"});document.querySelector('[name=name]').focus()};calendar.appendChild(b)})}
-function fallbackDates(){const out=[],now=new Date();for(let i=1;i<=21;i++){const d=new Date(now);d.setDate(now.getDate()+i);if(d.getDay()===2||d.getDay()===4)out.push({date:d.toISOString().slice(0,10),label:d.toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long"}),remaining:10,status:"green",full:false})}renderDates(out)}
-async function load(){if(!endpoint){fallbackDates();return}try{const r=await fetch(endpoint+"?action=availability");if(!r.ok)throw Error();renderDates((await r.json()).dates)}catch(e){status.textContent="Impossibile caricare le disponibilità. Riprova tra poco.";}}
-form.addEventListener("submit",async e=>{e.preventDefault();const data=Object.fromEntries(new FormData(form));if(Number(data.age)<18){status.textContent="Il corso è riservato ai maggiorenni.";return}status.textContent="Invio in corso…";if(!endpoint){status.textContent="Il sistema di prenotazione non è ancora collegato.";return}try{const r=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({...data,attribution:Object.fromEntries(new URLSearchParams(location.search))})});const out=await r.json();status.textContent=out.message||"Prenotazione registrata.";if(out.ok)form.reset()}catch(e){status.textContent="Si è verificato un errore. Riprova tra poco.";}})
+let metaPixelInitialized = false;
+
+function getStoredConsent(){
+  try{return localStorage.getItem(CONSENT_KEY)}catch(e){return null}
+}
+function setStoredConsent(value){
+  try{localStorage.setItem(CONSENT_KEY,value)}catch(e){}
+}
+function loadMetaPixel(){
+  if(metaPixelInitialized)return;
+  metaPixelInitialized=true;
+  !function(f,b,e,v,n,t,s){
+    if(f.fbq)return;
+    n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;
+    n.push=n;n.loaded=!0;n.version="2.0";n.queue=[];
+    t=b.createElement(e);t.async=!0;t.src=v;
+    s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)
+  }(window,document,"script","https://connect.facebook.net/en_US/fbevents.js");
+  fbq("init",META_PIXEL_ID);
+  fbq("consent","grant");
+  fbq("track","PageView");
+}
+function applyConsent(value){
+  setStoredConsent(value);
+  cookieBanner.hidden=true;
+  if(value==="granted"){
+    loadMetaPixel();
+  }else if(window.fbq){
+    fbq("consent","revoke");
+  }
+}
+function showConsentChoice(){
+  cookieBanner.hidden=false;
+}
+function initConsent(){
+  const consent=getStoredConsent();
+  if(consent==="granted")loadMetaPixel();
+  else if(consent!=="denied")showConsentChoice();
+}
+function trackMetaLead(bookingId){
+  if(!bookingId || getStoredConsent()!=="granted")return;
+  const dedupeKey="riccardocalli_meta_lead_sent_"+bookingId;
+  try{if(localStorage.getItem(dedupeKey)==="1")return}catch(e){}
+  loadMetaPixel();
+  fbq("track","Lead",{content_name:"Prova Parkour Padova"},{eventID:bookingId});
+  try{localStorage.setItem(dedupeKey,"1")}catch(e){}
+}
+
+cookieAccept.addEventListener("click",()=>applyConsent("granted"));
+cookieReject.addEventListener("click",()=>applyConsent("denied"));
+cookiePreferences.addEventListener("click",showConsentChoice);
+
+function renderDates(items){
+  calendar.innerHTML="";
+  if(!items.length){calendar.innerHTML="<p>Nessuna disponibilità nei prossimi giorni.</p>";return}
+  items.forEach(item=>{
+    const b=document.createElement("button");
+    b.type="button";
+    b.className="slot "+item.status;
+    b.disabled=item.full;
+    b.innerHTML="<strong>"+item.label+"</strong><span>"+item.remaining+" posti disponibili</span>";
+    b.onclick=()=>{
+      selectedDate=item.date;
+      document.querySelector("#date").value=item.date;
+      form.hidden=false;
+      submitButton.disabled=false;
+      form.scrollIntoView({behavior:"smooth",block:"start"});
+      document.querySelector('[name=name]').focus()
+    };
+    calendar.appendChild(b)
+  })
+}
+function fallbackDates(){
+  const out=[],now=new Date();
+  for(let i=1;i<=21;i++){
+    const d=new Date(now);
+    d.setDate(now.getDate()+i);
+    if(d.getDay()===2||d.getDay()===4)out.push({date:d.toISOString().slice(0,10),label:d.toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long"}),remaining:10,status:"green",full:false})
+  }
+  renderDates(out)
+}
+async function load(){
+  if(!endpoint){fallbackDates();return}
+  try{
+    const r=await fetch(endpoint+"?action=availability");
+    if(!r.ok)throw Error();
+    renderDates((await r.json()).dates)
+  }catch(e){
+    status.textContent="Impossibile caricare le disponibilità. Riprova tra poco."
+  }
+}
+form.addEventListener("submit",async e=>{
+  e.preventDefault();
+  const data=Object.fromEntries(new FormData(form));
+  if(Number(data.age)<18){status.textContent="Il corso è riservato ai maggiorenni.";return}
+  submitButton.disabled=true;
+  status.textContent="Invio in corso…";
+  if(!endpoint){status.textContent="Il sistema di prenotazione non è ancora collegato.";submitButton.disabled=false;return}
+  try{
+    const r=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({...data,attribution:Object.fromEntries(new URLSearchParams(location.search))})});
+    const out=await r.json();
+    status.textContent=out.message||"Prenotazione registrata.";
+    if(out.ok){
+      trackMetaLead(out.bookingId);
+      form.reset();
+    }else{
+      submitButton.disabled=false;
+    }
+  }catch(e){
+    status.textContent="Si è verificato un errore. Riprova tra poco.";
+    submitButton.disabled=false;
+  }
+});
+
+initConsent();
 load();
 </script>
 </body>
