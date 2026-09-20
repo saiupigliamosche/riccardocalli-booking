@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prenota la tua prova di Parkour — Riccardo Calli</title>
+<meta name="description" content="Prenota gratuitamente la tua prima prova di Parkour a Padova. Corso per maggiorenni, martedì e giovedì dalle 19:00 alle 20:30.">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main class="booking-shell">
+<header><a class="brand" href="https://www.riccardocalli.com">Riccardo “Saiu” Calli</a></header>
+<section class="intro">
+<p class="eyebrow">Parkour · Padova · 2026/27</p>
+<h1>La prima prova è gratuita.</h1>
+<p>Un corso per persone maggiorenni, anche senza esperienza. Scegli una data e lascia i tuoi contatti: ci vogliono pochi secondi.</p>
+</section>
+<section class="card" aria-labelledby="booking-title">
+<h2 id="booking-title">Scegli la tua prova</h2>
+<p class="muted">Martedì e giovedì · 19:00–20:30</p>
+<div id="calendar" class="calendar" aria-live="polite"><p>Caricamento disponibilità…</p></div>
+<form id="booking-form" hidden>
+<input type="hidden" id="date" name="date">
+<label>Nome e cognome<input required name="name" autocomplete="name"></label>
+<label>Età<input required name="age" type="number" min="18" max="120"></label>
+<label>Email<input required name="email" type="email" autocomplete="email"></label>
+<label>Telefono<input required name="phone" type="tel" autocomplete="tel"></label>
+<p class="privacy-note">I dati servono esclusivamente per gestire la prova. Consulta l’<a href="/privacy.html">informativa privacy</a>.</p>
+<button type="submit">Prenota la prova gratuita</button>
+<p id="status" role="status"></p>
+</form>
+</section>
+<section class="details"><h2>Come funziona</h2><p>Gli allenamenti sono itineranti in zone vicine al centro di Padova. Il punto di ritrovo preciso ti verrà comunicato prima della prova.</p></section>
+<footer><a href="/privacy.html">Privacy</a><span> · </span><a href="https://www.riccardocalli.com">riccardocalli.com</a></footer>
+</main>
+<script>
+const endpoint = window.BOOKING_API_ENDPOINT || "";
+const calendar = document.querySelector("#calendar");
+const form = document.querySelector("#booking-form");
+const status = document.querySelector("#status");
+let selectedDate = "";
+function renderDates(items){calendar.innerHTML=""; if(!items.length){calendar.innerHTML="<p>Nessuna disponibilità nei prossimi giorni.</p>";return} items.forEach(item=>{const b=document.createElement("button");b.type="button";b.className="slot "+item.status;b.disabled=item.full;b.innerHTML="<strong>"+item.label+"</strong><span>"+item.remaining+" posti disponibili</span>";b.onclick=()=>{selectedDate=item.date;document.querySelector("#date").value=item.date;form.hidden=false;form.scrollIntoView({behavior:"smooth",block:"start"});document.querySelector('[name=name]').focus()};calendar.appendChild(b)})}
+function fallbackDates(){const out=[],now=new Date();for(let i=1;i<=21;i++){const d=new Date(now);d.setDate(now.getDate()+i);if(d.getDay()===2||d.getDay()===4)out.push({date:d.toISOString().slice(0,10),label:d.toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long"}),remaining:10,status:"green",full:false})}renderDates(out)}
+async function load(){if(!endpoint){fallbackDates();return}try{const r=await fetch(endpoint+"?action=availability");if(!r.ok)throw Error();renderDates((await r.json()).dates)}catch(e){status.textContent="Impossibile caricare le disponibilità. Riprova tra poco.";}}
+form.addEventListener("submit",async e=>{e.preventDefault();const data=Object.fromEntries(new FormData(form));if(Number(data.age)<18){status.textContent="Il corso è riservato ai maggiorenni.";return}status.textContent="Invio in corso…";if(!endpoint){status.textContent="Il sistema di prenotazione non è ancora collegato.";return}try{const r=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({...data,attribution:Object.fromEntries(new URLSearchParams(location.search))})});const out=await r.json();status.textContent=out.message||"Prenotazione registrata.";if(out.ok)form.reset()}catch(e){status.textContent="Si è verificato un errore. Riprova tra poco.";}})
+load();
+</script>
+</body>
+</html>
