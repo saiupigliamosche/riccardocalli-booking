@@ -140,7 +140,7 @@ function updateCalendar_(trialDate) {
   start.setHours(CONFIG.startHour, 0, 0, 0);
   const end = new Date(start);
   end.setHours(CONFIG.endHour, CONFIG.endMinute, 0, 0);
-  const events = cal.getEventsForDay(start).filter(e => /^PROVE? – /.test(e.getTitle()));
+  const events = cal.getEventsForDay(start).filter(e => /^PROV[AE] – /.test(e.getTitle()));
   const people = sheet_().getDataRange().getValues().slice(1)
     .filter(row => normalizeDate_(row[1]) === trialDate && String(row[6]).toLowerCase() !== 'annullata')
     .map(row => String(row[2]) + ' ' + String(row[3]));
